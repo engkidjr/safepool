@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Wallet,
@@ -18,6 +18,7 @@ import {
   HelpCircle,
   RefreshCw,
   Settings,
+  Shield,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useApp, generateId, type Category, type RecurringPayment, type RecurringInterval } from "@/lib/store";
@@ -29,6 +30,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TutorialTour } from "@/components/TutorialTour";
 import { toast } from "sonner";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 const HeroScene = lazy(() =>
   import("@/components/HeroScene").then((m) => ({ default: m.HeroScene }))
@@ -87,9 +91,10 @@ function SafePoolPage() {
   // Cloud Sync & Performance Mode
   const cloudSync = useApp((s) => s.cloudSync);
   const setCloudSync = useApp((s) => s.setCloudSync);
-  const restoreState = useApp((s) => s.restoreState);
-  const performanceMode = useApp((s) => s.performanceMode);
   const setPerformanceMode = useApp((s) => s.setPerformanceMode);
+  const performanceMode = useApp((s) => s.performanceMode);
+
+
 
   // Local Page UI state
   const [mode, setMode] = useState<"in" | "out">("out");
@@ -117,6 +122,15 @@ function SafePoolPage() {
   // Local states
   const [editCategoriesMode, setEditCategoriesMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [cookieConsentOpen, setCookieConsentOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const consented = localStorage.getItem("safepool_data_consent");
+      if (!consented) {
+        setCookieConsentOpen(true);
+      }
+    }
+  }, []);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState(0);
@@ -135,7 +149,7 @@ function SafePoolPage() {
   const [goalDraft, setGoalDraft] = useState(String(goal));
   const [customCatOpen, setCustomCatOpen] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
-  const [syncOpen, setSyncOpen] = useState(false);
+
 
   // New custom category form state
   const [catName, setCatName] = useState("");
@@ -149,10 +163,7 @@ function SafePoolPage() {
   const [recType, setRecType] = useState<"in" | "out">("out");
   const [recCategory, setRecCategory] = useState("Fun");
 
-  // Sync Form State
-  const [syncEmail, setSyncEmail] = useState("");
-  const [syncPassword, setSyncPassword] = useState("");
-  const [syncProvider, setSyncProvider] = useState<"dropbox" | "gdrive" | "webdav">("dropbox");
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [onboardOpen, setOnboardOpen] = useState(false);
@@ -170,11 +181,11 @@ function SafePoolPage() {
   useEffect(() => {
     const onboarded = localStorage.getItem("safepool_onboarded") === "true";
     const tutorialDone = localStorage.getItem("safepool_tutorial_completed") === "true";
-    if (onboarded && !tutorialDone && !onboardOpen && !syncOpen) {
+    if (onboarded && !tutorialDone && !onboardOpen) {
       const timer = setTimeout(() => setShowTutorial(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [onboardOpen, syncOpen]);
+  }, [onboardOpen]);
 
   // Loading Settings
   const [autoProcessedLogs, setAutoProcessedLogs] = useState<string[]>([]);
@@ -281,7 +292,6 @@ function SafePoolPage() {
       setCategory(list[0].key);
     }
   }, [mode, incomeCategories, expenseCategories]);
-
   // Check onboarding on mount
   useEffect(() => {
     const onboarded = localStorage.getItem("safepool_onboarded");
@@ -296,7 +306,7 @@ function SafePoolPage() {
     setOnboardStep(1);
     feedback.sweep();
     if (enableSync) {
-      setSyncOpen(true);
+      linkWithGoogle();
     }
   };
 
@@ -321,7 +331,6 @@ function SafePoolPage() {
     setOnboardPinError(null);
     completeOnboarding(onboardMode === "cloud");
   };
-
   const handleSkipOnboardPin = () => {
     setOnboardPin("");
     setOnboardConfirmPin("");
@@ -475,47 +484,167 @@ function SafePoolPage() {
     feedback.save();
   };
 
-  const linkCloudAccount = () => {
-    if (!syncEmail || !syncPassword) {
-      alert("Please enter both email and password to connect.");
-      return;
-    }
+  const linkWithGoogle = async () => {
     setIsLinking(true);
     feedback.tap();
+    const provider = new GoogleAuthProvider();
+    try {
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-    // Simulate OAuth / authentication request
-    setTimeout(() => {
+      if (userDocSnap.exists()) {
+        const cloudData = userDocSnap.data();
+        useApp.getState().restoreState({
+          balance: cloudData.balance ?? 0,
+          vault: cloudData.vault ?? 0,
+          goal: cloudData.goal ?? 0,
+          transactions: cloudData.transactions ?? [],
+          recurringPayments: cloudData.recurringPayments ?? [],
+        });
+
+        if (cloudData.incomeCategories) {
+          useApp.setState({ incomeCategories: cloudData.incomeCategories });
+        }
+        if (cloudData.expenseCategories) {
+          useApp.setState({ expenseCategories: cloudData.expenseCategories });
+        }
+        if (cloudData.currency) {
+          useApp.setState({ currency: cloudData.currency });
+        }
+        if (cloudData.passcodeHash !== undefined) {
+          useApp.setState({ passcodeHash: cloudData.passcodeHash });
+        }
+
+        toast.success("Linked & Synced via Google", {
+          description: "Existing financial data has been downloaded.",
+        });
+      } else {
+        const currentState = useApp.getState();
+        await setDoc(userDocRef, {
+          balance: currentState.balance,
+          vault: currentState.vault,
+          goal: currentState.goal,
+          transactions: currentState.transactions,
+          recurringPayments: currentState.recurringPayments,
+          incomeCategories: currentState.incomeCategories,
+          expenseCategories: currentState.expenseCategories,
+          currency: currentState.currency,
+          passcodeHash: currentState.passcodeHash,
+          lastUpdated: new Date().toISOString(),
+        });
+
+        // Trigger welcome email document creation in firestore (runs on signup)
+        try {
+          await setDoc(doc(db, "mail", user.uid + "_welcome"), {
+            to: user.email,
+            message: {
+              subject: "Welcome to SafePool! 💸",
+              text: `Hi ${user.displayName || "there"}!\n\nWelcome to SafePool, your student financial engine. We're excited to help you manage your funds, sweep savings, and hit your goals!\n\nYour account is now synced across all devices.\n\nCheers,\nThe SafePool Team`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                  <h2 style="color: #10b981; font-family: 'Outfit', sans-serif;">Welcome to SafePool! 💸</h2>
+                  <p>Hi ${user.displayName || "there"},</p>
+                  <p>Welcome to SafePool, your student financial engine. We're excited to help you manage your funds, sweep savings, and hit your goals!</p>
+                  <p>Your transactions, vault savings, and recurring subscriptions are now securely synced to Google Cloud.</p>
+                  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                  <p style="font-size: 11px; color: #64748b;">This welcome email was dispatched automatically on signup.</p>
+                </div>
+              `
+            }
+          });
+          toast.success("Welcome Email Scheduled", {
+            description: `Sent welcome email to ${user.email} (Trigger Email).`,
+          });
+        } catch (mailErr) {
+          console.warn("Could not dispatch welcome email via Firestore Trigger: ", mailErr);
+        }
+
+        toast.success("Linked & Uploaded to Cloud", {
+          description: "Local data has been synced to your Google account.",
+        });
+      }
+
       setCloudSync({
         linked: true,
-        provider: syncProvider,
-        email: syncEmail,
+        provider: "firebase",
+        email: user.email || "Google Account",
         lastSync: new Date().toISOString(),
       });
       setIsLinking(false);
-      setSyncOpen(false);
       feedback.sweep();
-      toast.success("Cloud host linked successfully", {
-        description: `Syncing via ${syncProvider === "gdrive" ? "Google Drive" : syncProvider === "dropbox" ? "Dropbox" : "WebDAV"}.`,
-      });
-    }, 1800);
+    } catch (err: any) {
+      console.error("Google Auth Sync Connection Error:", err);
+      setIsLinking(false);
+      feedback.warning();
+      
+      if (err.code === "auth/popup-blocked") {
+        toast.error("Popup Blocked", {
+          description: "Please allow popups in your browser settings to sign in with Google.",
+        });
+      } else {
+        toast.error("Google Sign-In Failed", {
+          description: err.message || "Could not complete authorization with Google.",
+        });
+      }
+    }
   };
 
-  const unlinkCloudAccount = () => {
+  const unlinkCloudAccount = async () => {
     feedback.warning();
+    if (cloudSync.provider === "firebase") {
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Sign out error:", err);
+      }
+    }
     setCloudSync({
       linked: false,
       provider: undefined,
       email: undefined,
       lastSync: undefined,
     });
-    setSyncEmail("");
-    setSyncPassword("");
   };
 
-  const forceCloudSync = () => {
+  const forceCloudSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
     feedback.tap();
+
+    if (cloudSync.provider === "firebase" && auth.currentUser) {
+      try {
+        const user = auth.currentUser;
+        const userDocRef = doc(db, "users", user.uid);
+        const currentState = useApp.getState();
+        await setDoc(userDocRef, {
+          balance: currentState.balance,
+          vault: currentState.vault,
+          goal: currentState.goal,
+          transactions: currentState.transactions,
+          recurringPayments: currentState.recurringPayments,
+          incomeCategories: currentState.incomeCategories,
+          expenseCategories: currentState.expenseCategories,
+          currency: currentState.currency,
+          passcodeHash: currentState.passcodeHash,
+          lastUpdated: new Date().toISOString(),
+        });
+        setCloudSync({
+          lastSync: new Date().toISOString(),
+        });
+        setIsSyncing(false);
+        feedback.save();
+        toast.success("Synchronized successfully");
+      } catch (err: any) {
+        console.error("Manual sync failed:", err);
+        setIsSyncing(false);
+        toast.error("Sync failed", {
+          description: err.message || "Could not reach database.",
+        });
+      }
+      return;
+    }
 
     setTimeout(() => {
       setCloudSync({
@@ -627,21 +756,21 @@ function SafePoolPage() {
     <div className="min-h-screen aurora-bg text-foreground">
       {/* Top nav */}
       <header className="border-b border-border/40 glass sticky top-0 z-30">
-        <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl header-inner flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-xl bg-emerald/20 flex items-center justify-center">
               <Sparkles className="size-4 text-emerald" style={{ color: "var(--emerald)" }} />
             </div>
-            <span className="font-display font-extrabold text-xl tracking-tight">SafePool</span>
-            <span className="ml-3 text-xs text-muted-foreground hidden sm:inline">Track your spend, save for goals, sync across devices</span>
+            <span className="font-display font-extrabold text-lg tracking-tight">SafePool</span>
+            <span className="desktop-tagline ml-3 text-xs text-muted-foreground">Track your spend, save for goals, sync across devices</span>
           </div>
-          <nav className="flex items-center gap-6 text-sm">
+          <nav className="desktop-nav items-center gap-6 text-sm">
             <span className="text-foreground font-semibold">Dashboard</span>
             <Link id="tour-activity-link" to="/activity" className="text-muted-foreground hover:text-foreground transition-colors">
               Activity & Insights
             </Link>
           </nav>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Button
               variant="outline"
               size="sm"
@@ -649,7 +778,7 @@ function SafePoolPage() {
                 feedback.tap();
                 setShowTutorial(true);
               }}
-              className="text-muted-foreground border-border/40 hover:text-foreground hidden sm:inline-flex"
+              className="desktop-btn text-muted-foreground border-border/40 hover:text-foreground"
             >
               <HelpCircle className="size-4 mr-1.5" /> Guide
             </Button>
@@ -662,16 +791,18 @@ function SafePoolPage() {
               }}
               className="text-muted-foreground border-border/40 hover:text-foreground"
             >
-              <Settings className="size-4 mr-1.5" /> Settings
+              <Settings className="size-4" />
+              <span className="desktop-text ml-1.5">Settings</span>
             </Button>
             <Button id="tour-goal-btn" variant="outline" size="sm" onClick={() => { feedback.tap(); setGoalOpen(true); }}>
-              <Target className="size-4 mr-1.5" /> Set goal
+              <Target className="size-4" />
+              <span className="desktop-text ml-1.5">Set goal</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main id="maincontent" className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+      <main id="maincontent" className="mx-auto max-w-6xl main-content space-y-6">
         {autoProcessedLogs.length > 0 && (
           <div className="bg-emerald-soft/50 border border-emerald/20 p-4 rounded-3xl flex items-start gap-3">
             <AlertCircle className="size-5 text-emerald shrink-0 mt-0.5" />
@@ -749,7 +880,7 @@ function SafePoolPage() {
                   fontFeatureSettings: "'tnum'",
                   letterSpacing: "-0.025em",
                 }}
-                className="mt-3 font-mono text-5xl md:text-6xl leading-none text-text-primary"
+                className="mt-3 font-mono balance-text text-text-primary"
                 aria-live="polite"
                 aria-atomic="true"
               >
@@ -1043,10 +1174,10 @@ function SafePoolPage() {
               <legend className="sr-only">Cloud Sync Configuration</legend>
               <div className="flex items-center gap-2">
                 <Cloud className="size-5 text-emerald" aria-hidden="true" />
-                <h3 id="cloud-sync-heading" className="font-display font-extrabold text-lg">Cloud Sync Host</h3>
+                <h3 id="cloud-sync-heading" className="font-display font-extrabold text-lg">Cloud Sync</h3>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Link a cloud host to automatically synchronize transaction logs between your computer and phone.
+                Synchronize your financial logs and vault goals between your computer and mobile devices.
               </p>
 
               {cloudSync.linked ? (
@@ -1054,7 +1185,7 @@ function SafePoolPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-emerald flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-emerald animate-pulse" />
-                      Linked to {cloudSync.provider === "dropbox" ? "Dropbox" : cloudSync.provider === "gdrive" ? "Google Drive" : "WebDAV"}
+                      Linked to Google Cloud
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {cloudSync.lastSync ? `Synced: ${new Date(cloudSync.lastSync).toLocaleTimeString()}` : "Not synced"}
@@ -1065,22 +1196,14 @@ function SafePoolPage() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="provider-select" className="text-[11px] text-muted-foreground font-semibold">
-                      Select Cloud Provider
-                    </Label>
-                    <select
-                      id="provider-select"
-                      value={syncProvider}
-                      onChange={(e) => setSyncProvider(e.target.value as any)}
-                      className="w-full bg-background border border-border h-10 rounded-xl px-3 text-xs focus:outline-none"
-                    >
-                      <option value="gdrive">Google Drive</option>
-                      <option value="dropbox">Dropbox</option>
-                      <option value="webdav">WebDAV Secure Target</option>
-                    </select>
+                <div className="mt-4 p-4 rounded-2xl bg-muted/20 border border-border/20 space-y-1">
+                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-amber-500" />
+                    Status: 🔒 Local-First Private
                   </div>
+                  <p className="text-[10px] text-muted-foreground leading-normal">
+                    Your transactions are stored locally in your browser's cache. Link your Google account below to sync online.
+                  </p>
                 </div>
               )}
             </fieldset>
@@ -1104,23 +1227,44 @@ function SafePoolPage() {
                     onClick={unlinkCloudAccount}
                     className="flex-1 rounded-xl border-border/40 hover:bg-muted text-xs text-rose-400 hover:text-rose-300"
                   >
-                    Unlink Host
+                    Unlink Google
                   </Button>
                 </>
               ) : (
                 <Button
-                  onClick={() => {
-                    feedback.tap();
-                    setSyncOpen(true);
-                  }}
-                  className="w-full h-11 rounded-xl text-xs font-semibold glow-emerald"
+                  onClick={linkWithGoogle}
+                  className="w-full h-11 rounded-xl text-xs font-semibold glow-emerald flex items-center justify-center gap-2"
                   style={{ background: "var(--emerald)", color: "var(--primary-foreground)" }}
+                  disabled={isLinking}
                 >
-                  Sign In & Link Cloud Host
+                  {isLinking ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <svg className="size-4 mr-1" viewBox="0 0 24 24">
+                      <path
+                        fill="currentColor"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                  )}
+                  {isLinking ? "Connecting Google..." : "Link Google Account"}
                 </Button>
               )}
             </div>
           </Card>
+
         </motion.section>
       </main>
 
@@ -1356,68 +1500,13 @@ function SafePoolPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Cloud Host Authentication Dialog */}
-      <Dialog open={syncOpen} onOpenChange={setSyncOpen}>
-        <DialogContent className="rounded-3xl glass-elevated max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl">Link Cloud Host</DialogTitle>
-          </DialogHeader>
-          {isLinking ? (
-            <div className="py-8 flex flex-col items-center justify-center space-y-4">
-              <RefreshCw className="size-8 text-emerald animate-spin" />
-              <div className="text-center">
-                <p className="text-sm font-semibold">Authenticating with {syncProvider === "dropbox" ? "Dropbox" : syncProvider === "gdrive" ? "Google Drive" : "WebDAV"}...</p>
-                <p className="text-xs text-muted-foreground mt-1">Establishing secure SSL connection</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Sign in to your cloud storage host. SafePool will create a secure, encrypted configuration folder.
-              </p>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="sync-email">Cloud Email Address</Label>
-                  <Input
-                    id="sync-email"
-                    type="email"
-                    value={syncEmail}
-                    onChange={(e) => setSyncEmail(e.target.value)}
-                    placeholder="student@safepool.cloud"
-                    className="h-10 text-xs rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="sync-pass">Password / Access Token</Label>
-                  <Input
-                    id="sync-pass"
-                    type="password"
-                    value={syncPassword}
-                    onChange={(e) => setSyncPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="h-10 text-xs rounded-xl"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          {!isLinking && (
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button variant="outline" onClick={() => setSyncOpen(false)}>Cancel</Button>
-              <Button onClick={linkCloudAccount} className="glow-emerald"
-                style={{ background: "var(--emerald)", color: "var(--primary-foreground)" }}>
-                Sign In & Link
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Onboarding Preference Dialog */}
       <Dialog open={onboardOpen} onOpenChange={(open) => {
-        if (!open) return;
+        if (!open) {
+          handleSkipOnboardPin();
+          return;
+        }
         setOnboardOpen(open);
       }}>
         <DialogContent className="rounded-[24px] border border-white/10 bg-surface p-8 max-w-md shadow-2xl" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
@@ -1785,14 +1874,19 @@ function SafePoolPage() {
               <Label className="text-xs text-muted-foreground uppercase tracking-widest">Data Synchronization</Label>
               <Button
                 variant="outline"
-                className="w-full justify-start rounded-xl"
+                className={`w-full justify-start rounded-xl ${cloudSync.linked ? "border-rose-500/20 text-rose-400 hover:bg-rose-500/10" : ""}`}
                 onClick={() => {
                   feedback.tap();
                   setSettingsOpen(false);
-                  setSyncOpen(true);
+                  if (cloudSync.linked) {
+                    unlinkCloudAccount();
+                  } else {
+                    linkWithGoogle();
+                  }
                 }}
               >
-                <Cloud className="size-4 mr-2" /> Open Sync Settings
+                <Cloud className="size-4 mr-2" />
+                {cloudSync.linked ? "Unlink Google Cloud" : "Link Google Account"}
               </Button>
             </div>
 
@@ -1906,6 +2000,43 @@ function SafePoolPage() {
       </Dialog>
 
       {showTutorial && <TutorialTour onClose={() => setShowTutorial(false)} />}
+
+      {/* Cookie & Data Consent Banner */}
+      <AnimatePresence>
+        {cookieConsentOpen && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 right-6 left-6 md:left-auto md:max-w-md p-5 rounded-3xl glass-elevated border border-white/10 shadow-2xl z-50 flex flex-col gap-3"
+          >
+            <div className="flex items-start gap-3">
+              <div className="size-8 rounded-xl bg-emerald/10 border border-emerald/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Shield className="size-4 text-emerald" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Data & Session Privacy Notice</h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                  SafePool uses secure local storage (cookies and local cache) to persist your budget data and session keys. 
+                  If you link a Google Account, your email, transactions, and goals are stored securely in Google Cloud.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <button
+                onClick={() => {
+                  feedback.tap();
+                  setCookieConsentOpen(false);
+                  localStorage.setItem("safepool_data_consent", "true");
+                }}
+                className="text-[11px] px-3.5 py-1.5 rounded-lg bg-emerald hover:bg-emerald/90 text-primary-foreground font-semibold transition-colors"
+              >
+                Accept & Continue
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

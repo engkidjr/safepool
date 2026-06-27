@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, Play, Award, Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "./ui/button";
@@ -57,15 +58,6 @@ type Props = {
 
 export function TutorialTour({ onClose }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({
-    position: "fixed",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    zIndex: 100,
-  });
-
   const step = TOUR_STEPS[stepIndex];
 
   // 1. Scroll target into view when stepIndex changes
@@ -79,76 +71,6 @@ export function TutorialTour({ onClose }: Props) {
       return () => clearTimeout(timer);
     }
   }, [stepIndex, step.targetId]);
-
-  // 2. Track viewport-relative coordinates
-  useEffect(() => {
-    if (step.targetId === "center") {
-      setCoords(null);
-      return;
-    }
-
-    const updatePosition = () => {
-      const el = document.getElementById(step.targetId);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        setCoords({
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        });
-      }
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition, { passive: true });
-    window.addEventListener("scroll", updatePosition, { passive: true });
-
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition);
-    };
-  }, [stepIndex, step.targetId]);
-
-  // 3. Compute tooltip position (using fixed positioning)
-  useEffect(() => {
-    if (step.targetId === "center" || !coords) {
-      setTooltipStyle({
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        zIndex: 100,
-      });
-      return;
-    }
-
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
-    // Position below by default
-    let top = coords.top + coords.height + 16;
-    let left = coords.left + coords.width / 2 - 160;
-
-    // If there's no room below, position above
-    if (top + 240 > viewportHeight && coords.top > 240) {
-      top = coords.top - 230; // approx 200px height + margin
-    }
-
-    // Keep horizontally on screen
-    if (left < 16) left = 16;
-    if (left + 320 > viewportWidth) left = viewportWidth - 320 - 16;
-    if (top < 16) top = 16;
-    if (top + 240 > viewportHeight) top = viewportHeight - 240 - 16;
-
-    setTooltipStyle({
-      position: "fixed",
-      top: `${top}px`,
-      left: `${left}px`,
-      width: "320px",
-      zIndex: 100,
-    });
-  }, [coords, step.targetId]);
 
   // Apply styling/glow to highlighted element
   useEffect(() => {
@@ -200,11 +122,10 @@ export function TutorialTour({ onClose }: Props) {
     onClose();
   };
 
-  const isFirst = stepIndex === 0;
-  const isLast = stepIndex === TOUR_STEPS.length - 1;
+  if (typeof window === "undefined" || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-50">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Dimmed backdrop overlay */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -217,12 +138,11 @@ export function TutorialTour({ onClose }: Props) {
       <AnimatePresence mode="wait">
         <motion.div
           key={stepIndex}
-          initial={{ opacity: 0, scale: 0.95, y: step.targetId === "center" ? 0 : 15 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: step.targetId === "center" ? 0 : -15 }}
+          exit={{ opacity: 0, scale: 0.95, y: -15 }}
           transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-          style={tooltipStyle}
-          className="glass-elevated border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col pointer-events-auto select-none"
+          className="relative glass-elevated border border-white/10 p-6 rounded-3xl shadow-2xl flex flex-col pointer-events-auto select-none w-full max-w-[360px]"
         >
           {/* Header */}
           <div className="flex items-center justify-between gap-4">
@@ -308,6 +228,7 @@ export function TutorialTour({ onClose }: Props) {
           </div>
         </motion.div>
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body
   );
 }

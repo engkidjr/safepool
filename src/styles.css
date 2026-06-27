@@ -238,3 +238,90 @@
   animation: shimmer 1.5s infinite linear;
 }
 
+/* ===== Custom responsive utilities ===== */
+/* Desktop-only nav: hidden on mobile, flex on md+ */
+.desktop-nav {
+  display: none;
+}
+@media (min-width: 768px) {
+  .desktop-nav {
+    display: flex;
+  }
+}
+
+/* Desktop-only text: hidden on mobile, inline on sm+ */
+.desktop-text {
+  display: none;
+}
+@media (min-width: 640px) {
+  .desktop-text {
+    display: inline;
+  }
+}
+
+/* Desktop-only button: hidden on mobile, inline-flex on sm+ */
+.desktop-btn {
+  display: none;
+}
+@media (min-width: 640px) {
+  .desktop-btn {
+    display: inline-flex;
+  }
+}
+
+/* Desktop-only tagline: hidden on mobile, inline on lg+ */
+.desktop-tagline {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .desktop-tagline {
+    display: inline;
+  }
+}
+
+/* Responsive balance text */
+.balance-text {
+  font-size: 1.875rem; /* text-3xl */
+  line-height: 1;
+}
+@media (min-width: 640px) {
+  .balance-text {
+    font-size: 3rem; /* text-5xl */
+  }
+}
+@media (min-width: 768px) {
+  .balance-text {
+    font-size: 3.75rem; /* text-6xl */
+  }
+}
+
+/* Responsive header height */
+.header-inner {
+  height: 3.5rem; /* h-14 */
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .header-inner {
+    height: 4rem; /* h-16 */
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* Responsive main padding */
+.main-content {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+@media (min-width: 640px) {
+  .main-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+}
+

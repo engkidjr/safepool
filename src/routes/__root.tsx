@@ -16,6 +16,7 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useFirebaseSync } from "../hooks/useFirebaseSync";
 
 function NotFoundComponent() {
   return (
@@ -103,9 +104,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           content:
             "A frictionless local-first money tracker for students. Track spending, save for goals, sync across devices.",
         },
+        {
+          property: "og:image",
+          content: "https://safepool-8857f.web.app/og-image.png",
+        },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
         { property: "og:type", content: "website" },
         { property: "og:site_name", content: "SafePool" },
-        { name: "twitter:card", content: "summary" },
+        { name: "twitter:card", content: "summary_large_image" },
+        {
+          name: "twitter:image",
+          content: "https://safepool-8857f.web.app/og-image.png",
+        },
         {
           name: "twitter:title",
           content: "SafePool — Student Financial Engine",
@@ -190,6 +201,9 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
+
+  // Run the global Firebase synchronization hook
+  useFirebaseSync();
 
   return (
     <QueryClientProvider client={queryClient}>

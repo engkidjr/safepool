@@ -30,7 +30,7 @@ export type Txn = {
 
 export type CloudSyncSettings = {
   passphrase?: string;
-  provider?: "dropbox" | "gdrive" | "webdav";
+  provider?: "dropbox" | "gdrive" | "webdav" | "firebase";
   linked: boolean;
   lastSync?: string;
   email?: string;
