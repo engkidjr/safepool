@@ -122,6 +122,9 @@ export function TutorialTour({ onClose }: Props) {
     onClose();
   };
 
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === TOUR_STEPS.length - 1;
+
   if (typeof window === "undefined" || typeof document === "undefined") return null;
 
   return createPortal(
