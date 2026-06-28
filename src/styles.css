@@ -639,3 +639,43 @@ html.dark .noise-overlay::before {
 .sidebar-stagger-3 { transition-delay: 120ms; }
 .sidebar-stagger-4 { transition-delay: 150ms; }
 
+/* Custom Range Input Styling for Mobile Touch Targets */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 9999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.25);
+}
+
+input[type="range"]::-moz-range-thumb:active {
+  transform: scale(1.25);
+}
+
+
