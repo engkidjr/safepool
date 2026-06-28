@@ -163,7 +163,7 @@ void main() {
     float alpha = length(col);
     alpha = smoothstep(0.0, 0.3, alpha);
     alpha = min(alpha, 1.0);
-    gl_FragColor = vec4(col, alpha);
+    gl_FragColor = vec4(col * alpha, alpha);
   } else {
     gl_FragColor = vec4(col, 1.0);
   }
@@ -206,7 +206,7 @@ export default function Galaxy({
     try {
       renderer = new Renderer({
         alpha: transparent,
-        premultipliedAlpha: false
+        premultipliedAlpha: true
       });
       gl = renderer.gl;
     } catch (err) {
@@ -217,7 +217,7 @@ export default function Galaxy({
 
     if (transparent) {
       gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.clearColor(0, 0, 0, 0);
     } else {
       gl.clearColor(0, 0, 0, 1);

@@ -167,13 +167,56 @@ const AntigravityInner = ({
     mesh.instanceMatrix.needsUpdate = true;
   });
 
+  const uniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color(color) }
+  }), [color]);
+
+  useEffect(() => {
+    uniforms.uColor.value.set(color);
+  }, [color, uniforms]);
+
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
       {particleShape === 'capsule' && <capsuleGeometry args={[0.1, 0.4, 4, 8]} />}
       {particleShape === 'sphere' && <sphereGeometry args={[0.2, 16, 16]} />}
       {particleShape === 'box' && <boxGeometry args={[0.3, 0.3, 0.3]} />}
       {particleShape === 'tetrahedron' && <tetrahedronGeometry args={[0.3]} />}
-      <meshBasicMaterial color={color} />
+      <shaderMaterial
+        vertexShader={`
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          void main() {
+            vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+            vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `}
+        fragmentShader={`
+          varying vec3 vNormal;
+          varying vec3 vViewPosition;
+          uniform vec3 uColor;
+          void main() {
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            
+            // Fresnel effect for a beautiful soft outer glow / haze
+            float intensity = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+            
+            // Rich color blending: base color plus a glowing halo
+            vec3 finalColor = uColor + uColor * intensity * 1.5;
+            
+            // Soft alpha transition
+            float alpha = 0.35 + intensity * 0.65;
+            
+            // Premultiplied alpha output for perfect blending on both light & dark backgrounds
+            gl_FragColor = vec4(finalColor * alpha, alpha);
+          }
+        `}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+      />
     </instancedMesh>
   );
 };

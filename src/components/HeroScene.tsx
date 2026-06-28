@@ -464,6 +464,18 @@ export function HeroScene() {
           <CameraRig />
         </Canvas>
       )}
+
+      {/* Vignette / Edge blending overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background: `
+            radial-gradient(circle at center, transparent 35%, var(--background) 90%),
+            linear-gradient(to bottom, var(--background) 0%, transparent 15%, transparent 85%, var(--background) 100%),
+            linear-gradient(to right, var(--background) 0%, transparent 15%, transparent 85%, var(--background) 100%)
+          `,
+        }}
+      />
     </div>
   );
 }
