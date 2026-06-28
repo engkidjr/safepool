@@ -50,8 +50,47 @@ type State = {
   performanceMode: "eco" | "immersive";
   currency: string;
   hapticsEnabled: boolean;
+  crystalColor: string;
+  bgAnimation: "stars" | "antigravity" | "galaxy" | "ballpit";
+  bgAnimation: "stars" | "antigravity" | "galaxy" | "liquidether";
+  bgAntigravityCount: number;
+  bgAntigravityMagnetRadius: number;
+  bgAntigravityParticleSize: number;
+  bgAntigravityWaveSpeed: number;
+  bgAntigravityShape: "sphere" | "capsule" | "box" | "tetrahedron";
+  bgGalaxyStarSpeed: number;
+  bgGalaxyGlowIntensity: number;
+  bgGalaxyHueShift: number;
+  bgLiquidEtherMouseForce: number;
+  bgLiquidEtherCursorSize: number;
+  bgLiquidEtherIsViscous: boolean;
+  bgLiquidEtherViscous: number;
+  bgLiquidEtherAutoSpeed: number;
+  bgLiquidEtherAutoIntensity: number;
+  bgLiquidEtherIsBounce: boolean;
+  bgLiquidEtherResolution: number;
+  theme: "light" | "dark";
+  setTheme: (theme: "light" | "dark") => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setCurrency: (code: string) => void;
+  setCrystalColor: (color: string) => void;
+  setBgAnimation: (bg: "stars" | "antigravity" | "galaxy" | "liquidether") => void;
+  setBgAntigravityCount: (n: number) => void;
+  setBgAntigravityMagnetRadius: (n: number) => void;
+  setBgAntigravityParticleSize: (n: number) => void;
+  setBgAntigravityWaveSpeed: (n: number) => void;
+  setBgAntigravityShape: (s: "sphere" | "capsule" | "box" | "tetrahedron") => void;
+  setBgGalaxyStarSpeed: (n: number) => void;
+  setBgGalaxyGlowIntensity: (n: number) => void;
+  setBgGalaxyHueShift: (n: number) => void;
+  setBgLiquidEtherMouseForce: (n: number) => void;
+  setBgLiquidEtherCursorSize: (n: number) => void;
+  setBgLiquidEtherIsViscous: (b: boolean) => void;
+  setBgLiquidEtherViscous: (n: number) => void;
+  setBgLiquidEtherAutoSpeed: (n: number) => void;
+  setBgLiquidEtherAutoIntensity: (n: number) => void;
+  setBgLiquidEtherIsBounce: (b: boolean) => void;
+  setBgLiquidEtherResolution: (n: number) => void;
   removeCategory: (type: "in" | "out", key: string) => void;
   passcodeHash: string | null;
   failedAttempts: number;
@@ -78,9 +117,9 @@ type State = {
 };
 
 const id = () =>
-  (typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2));
+(typeof crypto !== "undefined" && "randomUUID" in crypto
+  ? crypto.randomUUID()
+  : Math.random().toString(36).slice(2));
 
 export const generateId = id;
 
@@ -114,7 +153,56 @@ export const useApp = create<State>()(
       performanceMode: "eco",
       currency: "USD",
       hapticsEnabled: true,
+      crystalColor: "#34d399",
+      bgAnimation: "stars",
+      bgAntigravityCount: 300,
+      bgAntigravityMagnetRadius: 10,
+      bgAntigravityParticleSize: 2,
+      bgAntigravityWaveSpeed: 0.4,
+      bgAntigravityShape: "sphere",
+      bgGalaxyStarSpeed: 0.5,
+      bgGalaxyGlowIntensity: 0.3,
+      bgGalaxyHueShift: 140,
+      bgLiquidEtherMouseForce: 20,
+      bgLiquidEtherCursorSize: 100,
+      bgLiquidEtherIsViscous: false,
+      bgLiquidEtherViscous: 30,
+      bgLiquidEtherAutoSpeed: 0.5,
+      bgLiquidEtherAutoIntensity: 2.2,
+      bgLiquidEtherIsBounce: false,
+      bgLiquidEtherResolution: 0.5,
+      theme: "dark",
+      setTheme: (theme) => {
+        set({ theme });
+        if (typeof window !== "undefined") {
+          const html = document.documentElement;
+          if (theme === "dark") {
+            html.classList.add("dark");
+          } else {
+            html.classList.remove("dark");
+          }
+          localStorage.setItem("safepool_dark_mode", String(theme === "dark"));
+        }
+      },
       setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
+      setCrystalColor: (color) => set({ crystalColor: color }),
+      setBgAnimation: (bg) => set({ bgAnimation: bg }),
+      setBgAntigravityCount: (n) => set({ bgAntigravityCount: n }),
+      setBgAntigravityMagnetRadius: (n) => set({ bgAntigravityMagnetRadius: n }),
+      setBgAntigravityParticleSize: (n) => set({ bgAntigravityParticleSize: n }),
+      setBgAntigravityWaveSpeed: (n) => set({ bgAntigravityWaveSpeed: n }),
+      setBgAntigravityShape: (s) => set({ bgAntigravityShape: s }),
+      setBgGalaxyStarSpeed: (n) => set({ bgGalaxyStarSpeed: n }),
+      setBgGalaxyGlowIntensity: (n) => set({ bgGalaxyGlowIntensity: n }),
+      setBgGalaxyHueShift: (n) => set({ bgGalaxyHueShift: n }),
+      setBgLiquidEtherMouseForce: (n) => set({ bgLiquidEtherMouseForce: n }),
+      setBgLiquidEtherCursorSize: (n) => set({ bgLiquidEtherCursorSize: n }),
+      setBgLiquidEtherIsViscous: (b) => set({ bgLiquidEtherIsViscous: b }),
+      setBgLiquidEtherViscous: (n) => set({ bgLiquidEtherViscous: n }),
+      setBgLiquidEtherAutoSpeed: (n) => set({ bgLiquidEtherAutoSpeed: n }),
+      setBgLiquidEtherAutoIntensity: (n) => set({ bgLiquidEtherAutoIntensity: n }),
+      setBgLiquidEtherIsBounce: (b) => set({ bgLiquidEtherIsBounce: b }),
+      setBgLiquidEtherResolution: (n) => set({ bgLiquidEtherResolution: n }),
       passcodeHash: null,
       failedAttempts: 0,
       lockoutUntil: null,
@@ -252,6 +340,25 @@ export const useApp = create<State>()(
           passcodeHash: null,
           failedAttempts: 0,
           lockoutUntil: null,
+          crystalColor: "#34d399",
+          bgAnimation: "stars",
+          bgAntigravityCount: 300,
+          bgAntigravityMagnetRadius: 10,
+          bgAntigravityParticleSize: 2,
+          bgAntigravityWaveSpeed: 0.4,
+          bgAntigravityShape: "sphere",
+          bgGalaxyStarSpeed: 0.5,
+          bgGalaxyGlowIntensity: 0.3,
+          bgGalaxyHueShift: 140,
+          bgLiquidEtherMouseForce: 20,
+          bgLiquidEtherCursorSize: 100,
+          bgLiquidEtherIsViscous: false,
+          bgLiquidEtherViscous: 30,
+          bgLiquidEtherAutoSpeed: 0.5,
+          bgLiquidEtherAutoIntensity: 2.2,
+          bgLiquidEtherIsBounce: false,
+          bgLiquidEtherResolution: 0.5,
+          theme: "dark",
         })),
     }),
     { name: "safepool-state-v2" }

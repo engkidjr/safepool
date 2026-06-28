@@ -19,6 +19,8 @@ import {
   RefreshCw,
   Settings,
   Shield,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useApp, generateId, type Category, type RecurringPayment, type RecurringInterval } from "@/lib/store";
@@ -68,6 +70,75 @@ const sectionVariants = {
   }),
 };
 
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  hex = hex.replace(/^#/, "");
+  if (hex.length === 3) {
+    hex = hex.split("").map(x => x + x).join("");
+  }
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100)
+  };
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+
+  if (h >= 0 && h < 60) {
+    r = c; g = x; b = 0;
+  } else if (h >= 60 && h < 120) {
+    r = x; g = c; b = 0;
+  } else if (h >= 120 && h < 180) {
+    r = 0; g = c; b = x;
+  } else if (h >= 180 && h < 240) {
+    r = 0; g = x; b = c;
+  } else if (h >= 240 && h < 300) {
+    r = x; g = 0; b = c;
+  } else if (h >= 300 && h < 360) {
+    r = c; g = 0; b = x;
+  }
+
+  const toHex = (val: number) => {
+    const hexStr = Math.round((val + m) * 255).toString(16);
+    return hexStr.length === 1 ? "0" + hexStr : hexStr;
+  };
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 function SafePoolPage() {
   const balance = useApp((s) => s.balance);
   const vault = useApp((s) => s.vault);
@@ -93,6 +164,57 @@ function SafePoolPage() {
   const setCloudSync = useApp((s) => s.setCloudSync);
   const setPerformanceMode = useApp((s) => s.setPerformanceMode);
   const performanceMode = useApp((s) => s.performanceMode);
+  const crystalColor = useApp((s) => s.crystalColor);
+  const setCrystalColor = useApp((s) => s.setCrystalColor);
+  const bgAnimation = useApp((s) => s.bgAnimation);
+
+  const [customColorOpen, setCustomColorOpen] = useState(false);
+  const hsl = useMemo(() => hexToHsl(crystalColor), [crystalColor]);
+
+  const handleHslChange = (key: "h" | "s" | "l", value: number) => {
+    const newHsl = { ...hsl, [key]: value };
+    const hex = hslToHex(newHsl.h, newHsl.s, newHsl.l);
+    setCrystalColor(hex);
+  };
+  const setBgAnimation = useApp((s) => s.setBgAnimation);
+  const theme = useApp((s) => s.theme);
+  const setTheme = useApp((s) => s.setTheme);
+
+  // Background Settings Selectors
+  const bgAntigravityCount = useApp((s) => s.bgAntigravityCount);
+  const setBgAntigravityCount = useApp((s) => s.setBgAntigravityCount);
+  const bgAntigravityMagnetRadius = useApp((s) => s.bgAntigravityMagnetRadius);
+  const setBgAntigravityMagnetRadius = useApp((s) => s.setBgAntigravityMagnetRadius);
+  const bgAntigravityParticleSize = useApp((s) => s.bgAntigravityParticleSize);
+  const setBgAntigravityParticleSize = useApp((s) => s.setBgAntigravityParticleSize);
+  const bgAntigravityWaveSpeed = useApp((s) => s.bgAntigravityWaveSpeed);
+  const setBgAntigravityWaveSpeed = useApp((s) => s.setBgAntigravityWaveSpeed);
+  const bgAntigravityShape = useApp((s) => s.bgAntigravityShape);
+  const setBgAntigravityShape = useApp((s) => s.setBgAntigravityShape);
+
+  const bgGalaxyStarSpeed = useApp((s) => s.bgGalaxyStarSpeed);
+  const setBgGalaxyStarSpeed = useApp((s) => s.setBgGalaxyStarSpeed);
+  const bgGalaxyGlowIntensity = useApp((s) => s.bgGalaxyGlowIntensity);
+  const setBgGalaxyGlowIntensity = useApp((s) => s.setBgGalaxyGlowIntensity);
+  const bgGalaxyHueShift = useApp((s) => s.bgGalaxyHueShift);
+  const setBgGalaxyHueShift = useApp((s) => s.setBgGalaxyHueShift);
+
+  const bgLiquidEtherMouseForce = useApp((s) => s.bgLiquidEtherMouseForce);
+  const setBgLiquidEtherMouseForce = useApp((s) => s.setBgLiquidEtherMouseForce);
+  const bgLiquidEtherCursorSize = useApp((s) => s.bgLiquidEtherCursorSize);
+  const setBgLiquidEtherCursorSize = useApp((s) => s.setBgLiquidEtherCursorSize);
+  const bgLiquidEtherIsViscous = useApp((s) => s.bgLiquidEtherIsViscous);
+  const setBgLiquidEtherIsViscous = useApp((s) => s.setBgLiquidEtherIsViscous);
+  const bgLiquidEtherViscous = useApp((s) => s.bgLiquidEtherViscous);
+  const setBgLiquidEtherViscous = useApp((s) => s.setBgLiquidEtherViscous);
+  const bgLiquidEtherAutoSpeed = useApp((s) => s.bgLiquidEtherAutoSpeed);
+  const setBgLiquidEtherAutoSpeed = useApp((s) => s.setBgLiquidEtherAutoSpeed);
+  const bgLiquidEtherAutoIntensity = useApp((s) => s.bgLiquidEtherAutoIntensity);
+  const setBgLiquidEtherAutoIntensity = useApp((s) => s.setBgLiquidEtherAutoIntensity);
+  const bgLiquidEtherIsBounce = useApp((s) => s.bgLiquidEtherIsBounce);
+  const setBgLiquidEtherIsBounce = useApp((s) => s.setBgLiquidEtherIsBounce);
+  const bgLiquidEtherResolution = useApp((s) => s.bgLiquidEtherResolution);
+  const setBgLiquidEtherResolution = useApp((s) => s.setBgLiquidEtherResolution);
 
 
 
@@ -1644,7 +1766,7 @@ function SafePoolPage() {
 
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-md bg-surface text-foreground border-border rounded-3xl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto pr-4 scrollbar-thin bg-surface text-foreground border-border rounded-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold tracking-tight">System Settings</DialogTitle>
           </DialogHeader>
@@ -1705,37 +1827,506 @@ function SafePoolPage() {
               </div>
             </div>
 
-            {/* Haptic Feedback Toggle */}
+            {/* Interface Theme (Light / Dark Mode) */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-widest">Tactile Audio Feedback</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-widest">Interface Theme</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => {
-                    setHapticsEnabled(true);
-                    // Use a temporary direct tone play or setTimeout so it has correct audio context permission on tap
-                    setTimeout(() => feedback.tap(), 0);
+                    feedback.tap();
+                    setTheme("light");
                   }}
-                  className={`p-3 rounded-xl border text-sm font-medium transition-colors ${
-                    hapticsEnabled
-                      ? "border-emerald bg-emerald-soft/30 text-emerald"
-                      : "border-border/40 hover:bg-surface-2"
+                  className={`p-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    theme === "light"
+                      ? "border-emerald bg-emerald-soft/30 text-emerald font-semibold"
+                      : "border-border/40 hover:bg-surface-2 text-text-secondary"
                   }`}
                 >
-                  🔊 Enabled
+                  <Sun className="size-4" /> Light
                 </button>
                 <button
                   onClick={() => {
-                    setHapticsEnabled(false);
+                    feedback.tap();
+                    setTheme("dark");
                   }}
-                  className={`p-3 rounded-xl border text-sm font-medium transition-colors ${
-                    !hapticsEnabled
-                      ? "border-emerald bg-emerald-soft/30 text-emerald"
-                      : "border-border/40 hover:bg-surface-2"
+                  className={`p-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    theme === "dark"
+                      ? "border-emerald bg-emerald-soft/30 text-emerald font-semibold"
+                      : "border-border/40 hover:bg-surface-2 text-text-secondary"
                   }`}
                 >
-                  🔇 Muted
+                  <Moon className="size-4" /> Dark
                 </button>
               </div>
+            </div>
+
+            {/* Crystal Theme */}
+            <div className="space-y-4 border-t border-border/40 pt-4">
+              <Label className="text-xs text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <Sparkles className="size-3.5" style={{ color: "var(--emerald)" }} /> Crystal Theme
+              </Label>
+              
+              {/* Crystal Color Picker */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-text-secondary">Energy Color</span>
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{crystalColor}</span>
+                </div>
+                
+                {/* Palette Presets */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  {[
+                    { name: "Teal", color: "#2dd4bf" },
+                    { name: "Emerald", color: "#34d399" },
+                    { name: "Green", color: "#4ade80" },
+                    { name: "Cyan", color: "#22d3ee" },
+                    { name: "Violet", color: "#a78bfa" },
+                    { name: "Sky", color: "#67e8f9" },
+                    { name: "Gold", color: "#FBBF24" },
+                    { name: "Rose", color: "#F43F5E" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.color}
+                      type="button"
+                      title={preset.name}
+                      onClick={() => {
+                        feedback.tap();
+                        setCrystalColor(preset.color);
+                      }}
+                      className="size-7 rounded-full border transition-all relative flex items-center justify-center cursor-pointer"
+                      style={{
+                        backgroundColor: preset.color,
+                        borderColor: crystalColor === preset.color ? "var(--foreground)" : "rgba(255,255,255,0.15)",
+                        boxShadow: crystalColor === preset.color ? `0 0 10px ${preset.color}` : "none",
+                      }}
+                    >
+                      {crystalColor === preset.color && (
+                        <Check className="size-3.5 text-black bg-white rounded-full p-0.5" />
+                      )}
+                    </button>
+                  ))}
+                  
+                  {/* Custom Color Input */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        feedback.tap();
+                        setCustomColorOpen(!customColorOpen);
+                      }}
+                      className="size-7 rounded-full overflow-hidden border border-border/60 hover:border-border cursor-pointer flex items-center justify-center"
+                    >
+                      <div 
+                        className="size-4 rounded-md border border-white/20"
+                        style={{ background: "linear-gradient(45deg, #ff0000, #00ff00, #0000ff)" }}
+                        title="Custom Color"
+                      />
+                    </button>
+
+                    {customColorOpen && (
+                      <div className="absolute bottom-9 right-0 z-50 w-64 p-4 rounded-2xl border border-border/40 bg-surface-2/95 backdrop-blur-xl shadow-2xl animate-slide-in-blurred-bottom space-y-4">
+                        <div className="text-xs font-semibold text-text-secondary border-b border-border/20 pb-2 flex justify-between items-center">
+                          <span>Custom Energy Color</span>
+                          <button 
+                            type="button"
+                            onClick={() => setCustomColorOpen(false)}
+                            className="text-text-muted hover:text-text-secondary text-xs cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Hue Slider */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-text-secondary">
+                            <span>Hue</span>
+                            <span className="font-mono">{hsl.h}°</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={360}
+                            value={hsl.h}
+                            onChange={(e) => handleHslChange("h", Number(e.target.value))}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer focus:outline-none"
+                            style={{
+                              background: "linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)"
+                            }}
+                          />
+                        </div>
+
+                        {/* Saturation Slider */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-text-secondary">
+                            <span>Saturation</span>
+                            <span className="font-mono">{hsl.s}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={hsl.s}
+                            onChange={(e) => handleHslChange("s", Number(e.target.value))}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer focus:outline-none"
+                            style={{
+                              background: `linear-gradient(to right, ${hslToHex(hsl.h, 0, 50)} 0%, ${hslToHex(hsl.h, 100, 50)} 100%)`
+                            }}
+                          />
+                        </div>
+
+                        {/* Lightness Slider */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-text-secondary">
+                            <span>Lightness</span>
+                            <span className="font-mono">{hsl.l}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={10}
+                            max={90}
+                            value={hsl.l}
+                            onChange={(e) => handleHslChange("l", Number(e.target.value))}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer focus:outline-none"
+                            style={{
+                              background: `linear-gradient(to right, #000000 0%, ${hslToHex(hsl.h, hsl.s, 50)} 50%, #ffffff 100%)`
+                            }}
+                          />
+                        </div>
+
+                        {/* Hex Display & Preview */}
+                        <div className="flex items-center gap-3 pt-1">
+                          <div 
+                            className="size-10 rounded-xl border border-white/20 shadow-inner"
+                            style={{ backgroundColor: crystalColor }}
+                          />
+                          <div className="flex-1">
+                            <div className="text-[10px] text-text-muted uppercase">Hex Value</div>
+                            <div className="text-sm font-mono font-semibold text-text-primary uppercase">{crystalColor}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Space Ambience */}
+              <div className="space-y-2 pt-2">
+                <span className="text-xs font-medium text-text-secondary">Space Ambience</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "stars", name: "Stars Field", icon: "✨" },
+                    { id: "antigravity", name: "Antigravity", icon: "🌌" },
+                    { id: "galaxy", name: "Galaxy", icon: "🪐" },
+                    { id: "liquidether", name: "Liquid Ether", icon: "💧" },
+                  ].map((bg) => (
+                    <button
+                      key={bg.id}
+                      type="button"
+                      onClick={() => {
+                        feedback.tap();
+                        setBgAnimation(bg.id as any);
+                      }}
+                      className={`p-2.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                        bgAnimation === bg.id
+                          ? "border-emerald bg-emerald-soft/30 text-emerald font-semibold"
+                          : "border-border/40 hover:bg-surface-2 text-text-secondary"
+                      }`}
+                    >
+                      <span>{bg.icon}</span>
+                      <span>{bg.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Space Ambience Customization Panel */}
+              {bgAnimation === "antigravity" && (
+                <div className="space-y-4 p-3.5 rounded-2xl border border-border/40 bg-surface-2/40 animate-slide-in-blurred-bottom">
+                  <div className="text-xs font-semibold text-text-secondary flex items-center gap-1.5 border-b border-border/20 pb-2">
+                    <span>🌌</span> Antigravity Particles Settings
+                  </div>
+                  
+                  {/* Particle Count */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Particle Count</span>
+                      <span className="font-mono text-emerald">{bgAntigravityCount}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={50}
+                      max={500}
+                      step={10}
+                      value={bgAntigravityCount}
+                      onChange={(e) => setBgAntigravityCount(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Magnet Radius */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Magnet Radius</span>
+                      <span className="font-mono text-emerald">{bgAntigravityMagnetRadius} px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={2}
+                      max={30}
+                      step={1}
+                      value={bgAntigravityMagnetRadius}
+                      onChange={(e) => setBgAntigravityMagnetRadius(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Particle Size */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Particle Size</span>
+                      <span className="font-mono text-emerald">{bgAntigravityParticleSize}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={5}
+                      step={0.1}
+                      value={bgAntigravityParticleSize}
+                      onChange={(e) => setBgAntigravityParticleSize(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Wave Speed */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Wave Speed</span>
+                      <span className="font-mono text-emerald">{bgAntigravityWaveSpeed}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.1}
+                      max={2}
+                      step={0.05}
+                      value={bgAntigravityWaveSpeed}
+                      onChange={(e) => setBgAntigravityWaveSpeed(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Particle Shape */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-xs font-medium text-text-secondary">Particle Shape</span>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {(["sphere", "capsule", "box", "tetrahedron"] as const).map((shape) => (
+                        <button
+                          key={shape}
+                          type="button"
+                          onClick={() => { feedback.tap(); setBgAntigravityShape(shape); }}
+                          className={`py-1.5 text-[10px] rounded-lg border text-center font-medium capitalize transition-all cursor-pointer ${
+                            bgAntigravityShape === shape
+                              ? "border-emerald bg-emerald-soft/20 text-emerald font-semibold"
+                              : "border-border/40 hover:bg-surface-3 text-text-secondary"
+                          }`}
+                        >
+                          {shape}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bgAnimation === "galaxy" && (
+                <div className="space-y-4 p-3.5 rounded-2xl border border-border/40 bg-surface-2/40 animate-slide-in-blurred-bottom">
+                  <div className="text-xs font-semibold text-text-secondary flex items-center gap-1.5 border-b border-border/20 pb-2">
+                    <span>🪐</span> Galaxy Nebula Settings
+                  </div>
+                  
+                  {/* Star Speed */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Star Speed</span>
+                      <span className="font-mono text-emerald">{bgGalaxyStarSpeed}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.1}
+                      max={2}
+                      step={0.05}
+                      value={bgGalaxyStarSpeed}
+                      onChange={(e) => setBgGalaxyStarSpeed(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Glow Intensity */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Glow Intensity</span>
+                      <span className="font-mono text-emerald">{bgGalaxyGlowIntensity}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                      value={bgGalaxyGlowIntensity}
+                      onChange={(e) => setBgGalaxyGlowIntensity(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Hue Shift */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Cosmic Hue Shift</span>
+                      <span className="font-mono text-emerald">{bgGalaxyHueShift}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={360}
+                      step={5}
+                      value={bgGalaxyHueShift}
+                      onChange={(e) => setBgGalaxyHueShift(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {bgAnimation === "liquidether" && (
+                <div className="space-y-4 p-3.5 rounded-2xl border border-border/40 bg-surface-2/40 animate-slide-in-blurred-bottom">
+                  <div className="text-xs font-semibold text-text-secondary flex items-center gap-1.5 border-b border-border/20 pb-2">
+                    <span>💧</span> Liquid Ether Settings
+                  </div>
+                  
+                  {/* Mouse Force */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Mouse Force</span>
+                      <span className="font-mono text-emerald">{bgLiquidEtherMouseForce}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={50}
+                      step={1}
+                      value={bgLiquidEtherMouseForce}
+                      onChange={(e) => setBgLiquidEtherMouseForce(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Cursor Size */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Cursor Size</span>
+                      <span className="font-mono text-emerald">{bgLiquidEtherCursorSize}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={20}
+                      max={300}
+                      step={5}
+                      value={bgLiquidEtherCursorSize}
+                      onChange={(e) => setBgLiquidEtherCursorSize(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Viscosity Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-medium text-text-secondary">Viscous Fluid</span>
+                    <button
+                      type="button"
+                      onClick={() => { feedback.tap(); setBgLiquidEtherIsViscous(!bgLiquidEtherIsViscous); }}
+                      className={`relative inline-flex h-5 w-9 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none min-h-0 ${
+                        bgLiquidEtherIsViscous ? 'bg-emerald' : 'bg-border'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          bgLiquidEtherIsViscous ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Viscosity Level (conditional) */}
+                  {bgLiquidEtherIsViscous && (
+                    <div className="space-y-1.5 animate-slide-in-blurred-bottom">
+                      <div className="flex justify-between text-xs font-medium text-text-secondary">
+                        <span>Viscosity Level</span>
+                        <span className="font-mono text-emerald">{bgLiquidEtherViscous}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={5}
+                        max={100}
+                        step={5}
+                        value={bgLiquidEtherViscous}
+                        onChange={(e) => setBgLiquidEtherViscous(Number(e.target.value))}
+                        className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Auto Demo Speed */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Auto Demo Speed</span>
+                      <span className="font-mono text-emerald">{bgLiquidEtherAutoSpeed}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      value={bgLiquidEtherAutoSpeed}
+                      onChange={(e) => setBgLiquidEtherAutoSpeed(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Auto Demo Intensity */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-text-secondary">
+                      <span>Auto Demo Intensity</span>
+                      <span className="font-mono text-emerald">{bgLiquidEtherAutoIntensity}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.1}
+                      max={5}
+                      step={0.1}
+                      value={bgLiquidEtherAutoIntensity}
+                      onChange={(e) => setBgLiquidEtherAutoIntensity(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border/50 rounded-lg appearance-none cursor-pointer accent-emerald focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Fluid Bounce Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-medium text-text-secondary">Edge Bouncing</span>
+                    <button
+                      type="button"
+                      onClick={() => { feedback.tap(); setBgLiquidEtherIsBounce(!bgLiquidEtherIsBounce); }}
+                      className={`relative inline-flex h-5 w-9 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none min-h-0 ${
+                        bgLiquidEtherIsBounce ? 'bg-emerald' : 'bg-border'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          bgLiquidEtherIsBounce ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* App Lock Passcode Setup */}

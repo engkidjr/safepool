@@ -8,8 +8,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { LayoutDashboard, LineChart, Target } from "lucide-react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { LayoutDashboard, LineChart, Target, Sun, Moon } from "lucide-react";
 import { feedback } from "../lib/feedback";
 import { motion, AnimatePresence } from "motion/react";
 import { Toaster } from "sonner";
@@ -17,6 +17,30 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useFirebaseSync } from "../hooks/useFirebaseSync";
+import { useApp } from "../lib/store";
+
+// ── Dark mode hook ──────────────────────────────────────────────────
+function useDarkMode() {
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("safepool_dark_mode");
+    if (stored !== null) return stored === "true";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    const html = document.documentElement;
+    if (dark) {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+    localStorage.setItem("safepool_dark_mode", String(dark));
+  }, [dark]);
+
+  const toggle = useCallback(() => setDark((d) => !d), []);
+  return { dark, toggle };
+}
 
 function NotFoundComponent() {
   return (
@@ -189,6 +213,12 @@ function RootShell({ children }: { children: ReactNode }) {
             }),
           }}
         />
+        {/* Inline dark-mode initialiser — runs before CSS, prevents flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('safepool_dark_mode');var d=s!==null?s==='true':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();`,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -201,9 +231,20 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
+  const theme = useApp((s) => s.theme);
+  const setTheme = useApp((s) => s.setTheme);
 
   // Run the global Firebase synchronization hook
   useFirebaseSync();
+
+  useEffect(() => {
+    const html = document.documentElement;
+    if (theme === "dark") {
+      html.classList.add("dark");
+    } else {
+      html.classList.remove("dark");
+    }
+  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>

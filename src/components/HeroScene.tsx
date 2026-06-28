@@ -7,6 +7,10 @@ import {
   Sparkles,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { useApp } from "@/lib/store";
+import Antigravity from "@/components/Antigravity";
+import Galaxy from "@/components/Galaxy";
+import LiquidEther from "@/components/LiquidEther";
 
 /* ─── Crystal shard geometry ─── */
 function CrystalShard({
@@ -65,20 +69,23 @@ function CrystalShard({
   );
 }
 
-/* ─── Growing crystal cluster ─── */
-function CrystalCluster() {
+/* ─── Growing crystal cluster with customizable palette ─── */
+function CrystalCluster({ primaryColor }: { primaryColor: string }) {
   const groupRef = useRef<THREE.Group>(null!);
 
   // Generate crystal shard configurations
   const shards = useMemo(() => {
     const configs = [];
-    const emeraldColors = [
-      "#2dd4bf", // teal
-      "#34d399", // emerald
-      "#4ade80", // green
-      "#22d3ee", // cyan
-      "#a78bfa", // violet accent
-      "#67e8f9", // sky
+    const baseColor = new THREE.Color(primaryColor);
+    
+    // Generate a harmonious palette from the primary color
+    const colors = [
+      primaryColor,
+      "#" + baseColor.clone().offsetHSL(0.05, 0.1, 0.1).getHexString(),  // slightly warmer
+      "#" + baseColor.clone().offsetHSL(-0.05, -0.1, -0.05).getHexString(), // slightly cooler
+      "#" + baseColor.clone().offsetHSL(0.1, 0.2, 0.0).getHexString(),    // more saturated accent
+      "#" + baseColor.clone().offsetHSL(-0.1, 0.0, 0.15).getHexString(),  // pastel accent
+      "#ffffff", // pure white reflection shard
     ];
 
     // Center large crystal
@@ -86,7 +93,7 @@ function CrystalCluster() {
       position: [0, 0, 0] as [number, number, number],
       rotation: [0, 0, 0] as [number, number, number],
       scale: 0.6,
-      color: emeraldColors[1],
+      color: colors[0],
       delay: 200,
     });
 
@@ -109,7 +116,7 @@ function CrystalCluster() {
           (Math.random() - 0.5) * 0.4,
         ] as [number, number, number],
         scale: 0.15 + Math.random() * 0.35,
-        color: emeraldColors[Math.floor(Math.random() * emeraldColors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
         delay: 400 + i * 150,
       });
     }
@@ -130,13 +137,13 @@ function CrystalCluster() {
           Math.random() * 0.5,
         ] as [number, number, number],
         scale: 0.05 + Math.random() * 0.1,
-        color: emeraldColors[Math.floor(Math.random() * emeraldColors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)],
         delay: 1800 + i * 100,
       });
     }
 
     return configs;
-  }, []);
+  }, [primaryColor]);
 
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -289,6 +296,41 @@ class ThreeErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
 /* ─── Main exported scene ─── */
 export function HeroScene() {
+  const crystalColor = useApp((s) => s.crystalColor);
+  const bgAnimation = useApp((s) => s.bgAnimation);
+
+  // Background Settings
+  const bgAntigravityCount = useApp((s) => s.bgAntigravityCount);
+  const bgAntigravityMagnetRadius = useApp((s) => s.bgAntigravityMagnetRadius);
+  const bgAntigravityParticleSize = useApp((s) => s.bgAntigravityParticleSize);
+  const bgAntigravityWaveSpeed = useApp((s) => s.bgAntigravityWaveSpeed);
+  const bgAntigravityShape = useApp((s) => s.bgAntigravityShape);
+
+  const bgGalaxyStarSpeed = useApp((s) => s.bgGalaxyStarSpeed);
+  const bgGalaxyGlowIntensity = useApp((s) => s.bgGalaxyGlowIntensity);
+  const bgGalaxyHueShift = useApp((s) => s.bgGalaxyHueShift);
+
+  const bgLiquidEtherMouseForce = useApp((s) => s.bgLiquidEtherMouseForce);
+  const bgLiquidEtherCursorSize = useApp((s) => s.bgLiquidEtherCursorSize);
+  const bgLiquidEtherIsViscous = useApp((s) => s.bgLiquidEtherIsViscous);
+  const bgLiquidEtherViscous = useApp((s) => s.bgLiquidEtherViscous);
+  const bgLiquidEtherAutoSpeed = useApp((s) => s.bgLiquidEtherAutoSpeed);
+  const bgLiquidEtherAutoIntensity = useApp((s) => s.bgLiquidEtherAutoIntensity);
+  const bgLiquidEtherIsBounce = useApp((s) => s.bgLiquidEtherIsBounce);
+  const bgLiquidEtherResolution = useApp((s) => s.bgLiquidEtherResolution);
+
+  const liquidEtherColors = useMemo(() => {
+    if (crystalColor === "#34d399") {
+      return ["#5227FF", "#FF9FFC", "#B497CF"];
+    }
+    const base = new THREE.Color(crystalColor);
+    return [
+      crystalColor,
+      "#" + base.clone().offsetHSL(0.15, 0.2, 0.1).getHexString(),
+      "#" + base.clone().offsetHSL(-0.15, 0.2, 0.2).getHexString(),
+    ];
+  }, [crystalColor]);
+
   return (
     <div
       className="hero-scene-container"
@@ -299,67 +341,129 @@ export function HeroScene() {
         pointerEvents: "none",
       }}
     >
-      <Canvas
-        camera={{ position: [0, 2, 5], fov: 45 }}
-        dpr={1}
-        gl={{
-          antialias: true,
-          alpha: true,
-          powerPreference: "high-performance",
-        }}
-        style={{ background: "transparent" }}
-      >
-        {/* Lighting */}
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[5, 8, 5]}
-          intensity={1.2}
-          color="#ffffff"
-        />
-        <pointLight position={[0, 2, 0]} intensity={2} color="#34d399" distance={8} />
-        <pointLight position={[-2, 1, -2]} intensity={0.8} color="#22d3ee" distance={6} />
-        <pointLight position={[2, 0, 2]} intensity={0.6} color="#a78bfa" distance={5} />
+      {/* 2D/3D Backgrounds */}
+      {bgAnimation === "antigravity" && (
+        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: -1, pointerEvents: "auto" }}>
+          <Antigravity
+            count={bgAntigravityCount}
+            magnetRadius={bgAntigravityMagnetRadius}
+            ringRadius={bgAntigravityMagnetRadius}
+            waveSpeed={bgAntigravityWaveSpeed}
+            waveAmplitude={1.8}
+            particleSize={bgAntigravityParticleSize}
+            lerpSpeed={0.32}
+            color={crystalColor}
+            autoAnimate={false}
+            particleVariance={1}
+            rotationSpeed={0}
+            depthFactor={1}
+            pulseSpeed={3}
+            particleShape={bgAntigravityShape}
+            fieldStrength={10}
+          />
+        </div>
+      )}
 
-        {/* Environment for reflections */}
-        <ThreeErrorBoundary>
-          <Environment preset="night" />
-        </ThreeErrorBoundary>
+      {bgAnimation === "galaxy" && (
+        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: -1, pointerEvents: "auto" }}>
+          <Galaxy
+            starSpeed={bgGalaxyStarSpeed}
+            density={1}
+            hueShift={bgGalaxyHueShift}
+            speed={1}
+            glowIntensity={bgGalaxyGlowIntensity}
+            saturation={0.8}
+            mouseRepulsion
+            repulsionStrength={2}
+            twinkleIntensity={0.3}
+            rotationSpeed={0.1}
+            transparent
+          />
+        </div>
+      )}
 
-        {/* Crystal cluster — the star of the show */}
-        <Float speed={1} rotationIntensity={0.1} floatIntensity={0.3}>
-          <CrystalCluster />
-        </Float>
+      {bgAnimation === "liquidether" && (
+        <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: -1, pointerEvents: "auto", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '1080px', height: '1080px', position: 'relative', maxWidth: '100%', maxHeight: '100%', aspectRatio: '1/1' }}>
+            <LiquidEther
+              mouseForce={bgLiquidEtherMouseForce}
+              cursorSize={bgLiquidEtherCursorSize}
+              isViscous={bgLiquidEtherIsViscous}
+              viscous={bgLiquidEtherViscous}
+              colors={liquidEtherColors}
+              autoDemo
+              autoSpeed={bgLiquidEtherAutoSpeed}
+              autoIntensity={bgLiquidEtherAutoIntensity}
+              isBounce={bgLiquidEtherIsBounce}
+              resolution={bgLiquidEtherResolution}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Energy particles drifting up */}
-        <EnergyParticles />
+      {bgAnimation === "stars" && (
+        <Canvas
+          camera={{ position: [0, 2, 5], fov: 45 }}
+          dpr={1}
+          gl={{
+            antialias: true,
+            alpha: true,
+            powerPreference: "high-performance",
+          }}
+          style={{ background: "transparent" }}
+        >
+          {/* Lighting */}
+          <ambientLight intensity={0.3} />
+          <directionalLight
+            position={[5, 8, 5]}
+            intensity={1.2}
+            color="#ffffff"
+          />
+          <pointLight position={[0, 2, 0]} intensity={2} color={crystalColor} distance={8} />
+          <pointLight position={[-2, 1, -2]} intensity={0.8} color="#22d3ee" distance={6} />
+          <pointLight position={[2, 0, 2]} intensity={0.6} color="#a78bfa" distance={5} />
 
-        {/* Ground emission */}
-        <GroundGlow />
+          {/* Environment for reflections */}
+          <ThreeErrorBoundary>
+            <Environment preset="night" />
+          </ThreeErrorBoundary>
 
-        {/* Background stars */}
-        <Stars
-          radius={50}
-          depth={50}
-          count={300}
-          factor={3}
-          saturation={0.5}
-          fade
-          speed={0.5}
-        />
+          {/* Crystal cluster — the star of the show */}
+          <Float speed={1} rotationIntensity={0.1} floatIntensity={0.3}>
+            <CrystalCluster primaryColor={crystalColor} />
+          </Float>
 
-        {/* Sparkles around crystals */}
-        <Sparkles
-          count={25}
-          scale={4}
-          size={2}
-          speed={0.3}
-          opacity={0.4}
-          color="#34d399"
-        />
+          {/* Energy particles drifting up */}
+          <EnergyParticles />
 
-        {/* Mouse parallax camera */}
-        <CameraRig />
-      </Canvas>
+          {/* Ground emission */}
+          <GroundGlow />
+
+          {/* Background stars */}
+          <Stars
+            radius={50}
+            depth={50}
+            count={300}
+            factor={3}
+            saturation={0.5}
+            fade
+            speed={0.5}
+          />
+
+          {/* Sparkles around crystals */}
+          <Sparkles
+            count={25}
+            scale={4}
+            size={2}
+            speed={0.3}
+            opacity={0.4}
+            color={crystalColor}
+          />
+
+          {/* Mouse parallax camera */}
+          <CameraRig />
+        </Canvas>
+      )}
     </div>
   );
 }
