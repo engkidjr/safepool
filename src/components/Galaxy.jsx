@@ -71,7 +71,7 @@ vec3 hsv2rgb(vec3 c) {
 
 float Star(vec2 uv, float flare) {
   float d = length(uv);
-  float m = (0.05 * uGlowIntensity) / d;
+  float m = (0.05 * uGlowIntensity) / (d + 0.001);
   float rays = smoothstep(0.0, 1.0, 1.0 - abs(uv.x * uv.y * 1000.0));
   m += rays * flare * uGlowIntensity;
   uv *= MAT45;
@@ -101,10 +101,10 @@ vec3 StarLayer(vec2 uv) {
       float grn = min(red, blu) * seed;
       vec3 base = vec3(red, grn, blu);
       
-      float hue = atan(base.g - base.r, base.b - base.r) / (2.0 * 3.14159) + 0.5;
+      float hue = atan(base.g - base.r, base.b - base.r + 0.00001) / (2.0 * 3.14159) + 0.5;
       hue = fract(hue + uHueShift / 360.0);
       float sat = length(base - vec3(dot(base, vec3(0.299, 0.587, 0.114)))) * uSaturation;
-      float val = max(max(base.r, base.g), base.b);
+      float val = 1.0; // Enforce maximum brightness to prevent any dark/grey stars
       base = hsv2rgb(vec3(hue, sat, val));
 
       vec2 pad = vec2(tris(seed * 34.0 + uTime * uSpeed / 10.0), tris(seed * 38.0 + uTime * uSpeed / 30.0)) - 0.5;
@@ -160,9 +160,7 @@ void main() {
   }
 
   if (uTransparent) {
-    float alpha = length(col);
-    alpha = smoothstep(0.0, 0.3, alpha);
-    alpha = min(alpha, 1.0);
+    float alpha = clamp(length(col), 0.0, 1.0);
     gl_FragColor = vec4(col * alpha, alpha);
   } else {
     gl_FragColor = vec4(col, 1.0);

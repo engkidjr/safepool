@@ -495,7 +495,7 @@ html.dark .glass-elevated {
 .gradient-border { border: 1px solid var(--border); box-shadow: var(--elevation-1); }
 .glow-emerald    { box-shadow: var(--elevation-2); }
 .glow-backdrop   { position: relative; }
-.hero-scene-wrapper { position: relative; min-height: 420px; }
+.hero-scene-wrapper { position: relative; min-height: 420px; border-radius: 1.5rem; overflow: hidden; }
 
 /* ─────────────────────────────────────────────────
    RESPONSIVE UTILITIES
